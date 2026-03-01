@@ -1,6 +1,8 @@
-# ⚠️ Repository Status: Archived
+# Aspect Ratio Helper – Forge Neo Edition (Gradio 4 Ready)
 
-This repository has been archived and is no longer actively maintained. The project was originally created as a personal extension for Stable Diffusion Web UI. I am no longer using or developing it. Feel free to fork this repository if you'd like to continue development or create your own version, though there may be more current alternatives available for Stable Diffusion Web UI.
+A maintained fork of Aspect Ratio Helper adapted for Forge Neo and Gradio 4.x.
+This version resolves compatibility issues caused by deprecated Gradio APIs and differences in Neo’s frontend initialization. The JavaScript controller has been redesigned to function independently of window.opts and to initialize reliably within Neo’s UI environment.
+This fork will continue to be maintained for Forge Neo compatibility.
 
 
 ---
