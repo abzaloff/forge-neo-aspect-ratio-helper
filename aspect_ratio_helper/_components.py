@@ -45,14 +45,12 @@ class MaxDimensionScaler(ArhUIComponent):
             max_dim_default = _settings.safe_opt(
                 _constants.ARH_MAX_WIDTH_OR_HEIGHT_KEY,
             )
-            # todo: when using gr.Slider (not deprecated), the default value
-            #  is somehow always 270?... can't figure out why.
-            #  using legacy inputs.Slider for now as it doesn't have the issue.
-            max_dimension_slider = gr.inputs.Slider(
+
+            max_dimension_slider = gr.Slider(
                 minimum=_constants.MIN_DIMENSION,
                 maximum=_constants.MAX_DIMENSION,
                 step=8,
-                default=max_dim_default,
+                value=max_dim_default,
                 label='Maximum dimension',
             )
 
@@ -124,14 +122,12 @@ class MinDimensionScaler(ArhUIComponent):
             min_dim_default = _settings.safe_opt(
                 _constants.ARH_MIN_WIDTH_OR_HEIGHT_KEY,
             )
-            # todo: when using gr.Slider (not deprecated), the default value
-            #  is somehow always 270?... can't figure out why.
-            #  using legacy inputs.Slider for now as it doesn't have the issue.
-            min_dimension_slider = gr.inputs.Slider(
+
+            min_dimension_slider = gr.Slider(
                 minimum=_constants.MIN_DIMENSION,
                 maximum=_constants.MAX_DIMENSION,
                 step=8,
-                default=min_dim_default,
+                value=min_dim_default,
                 label='Minimum dimension',
             )
 
@@ -274,7 +270,7 @@ class PredefinedAspectRatioButtons(ArhUIComponent):
 
     @property
     def display_func(self) -> Callable[[str], str]:
-        return lambda _: None  # todo: different displays for aspect ratios.
+        return lambda _: None
 
 
 class PredefinedPercentageButtons(ArhUIComponent):
