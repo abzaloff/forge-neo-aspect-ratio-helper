@@ -95,8 +95,9 @@
       this.options = options;
 
       this.switchButton = findResSwitchButton(page);
+      this.injected = false;
       if (!this.switchButton) {
-        console.warn(`[ARH] Cannot find ${page}_res_switch_btn — JS control not injected.`);
+        console.warn(`[ARH] Cannot find ${page}_res_switch_btn - JS control not injected yet.`);
         return;
       }
 
@@ -140,6 +141,7 @@
         else controller.setAspectRatio(picked);
       };
 
+      this.injected = true;
       console.log(`[ARH] Injected JS picker for ${page}`);
     }
 
@@ -286,12 +288,13 @@
       tries++;
 
       const { w, h } = findWidthHeightContainers(page);
-      if (!w || !h) {
+      const sw = findResSwitchButton(page);
+      if (!w || !h || !sw) {
         if (tries === 1 || tries === 10 || tries === 30 || tries === maxTries) {
-          console.log(`[ARH] ${page} waiting width/height... (try ${tries}/${maxTries}) w=${!!w} h=${!!h}`);
+          console.log(`[ARH] ${page} waiting controls... (try ${tries}/${maxTries}) w=${!!w} h=${!!h} sw=${!!sw}`);
         }
         if (tries >= maxTries) {
-          console.warn(`[ARH] ${page} giving up: width/height not found`);
+          console.warn(`[ARH] ${page} giving up: required controls not found`);
           clearInterval(timer);
         }
         return;
@@ -302,9 +305,14 @@
         return;
       }
 
-      new AspectRatioController(page, w, h, options);
+      const controller = new AspectRatioController(page, w, h, options);
+      if (!controller.optionPickingControler?.injected) {
+        if (tries === 1 || tries === 10 || tries === 30 || tries === maxTries) {
+          console.log(`[ARH] ${page} picker not injected yet (try ${tries}/${maxTries})`);
+        }
+        return;
+      }
 
-      const sw = findResSwitchButton(page);
       console.log(`[ARH] ${page} init done. res_switch_btn=${!!sw}`);
       window[key] = true;
       clearInterval(timer);
