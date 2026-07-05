@@ -5,7 +5,7 @@
   const _LOCK = "🔒";
   const _IMAGE = "🖼️";
 
-  const DEFAULT_RATIOS = ["1:1", "4:3", "3:2", "5:4", "16:9", "9:16", "21:9"];
+  const DEFAULT_RATIOS = ["1:1", "3:2", "4:3", "5:4", "16:9", "21:9"];
 
   const _MAXIMUM_DIMENSION = 2048;
   const _MINIMUM_DIMENSION = 64;
@@ -24,6 +24,26 @@
   const aspectRatioFromStr = (ar) => {
     if (!ar || !ar.includes(":")) return null;
     return ar.split(":").map((x) => Number(x));
+  };
+
+  const getSharedOpt = (key, fallback) => {
+    const sharedOpts =
+      typeof opts !== "undefined" && Object.keys(opts).length ? opts :
+      window.opts || globalThis.opts || {};
+    return sharedOpts[key] ?? fallback;
+  };
+
+  const getConfiguredRatios = () => {
+    const configured = getSharedOpt("arh_javascript_aspect_ratio", DEFAULT_RATIOS.join(","));
+    const ratios = String(configured)
+      .split(",")
+      .map((ratio) => ratio.trim())
+      .filter((ratio) => {
+        const parsed = aspectRatioFromStr(ratio);
+        return parsed?.length === 2 && parsed.every((value) => Number.isFinite(value) && value > 0);
+      });
+
+    return ratios.length ? ratios : DEFAULT_RATIOS;
   };
 
   const reverseAspectRatio = (ar) => {
@@ -47,8 +67,8 @@
     return [width, height];
   };
 
-  const reverseAllOptions = () => {
-    const list = Array.from(gradioApp().querySelectorAll(".ar-option"));
+  const reverseOptions = (select) => {
+    const list = Array.from(select?.querySelectorAll(".ar-option") ?? []);
     list.forEach((el) => {
       const rev = reverseAspectRatio(el.value);
       if (rev) {
@@ -94,7 +114,8 @@
       this.page = page;
       this.options = options;
 
-      this.switchButton = findResSwitchButton(page);
+      const nativeSwitchButton = findResSwitchButton(page);
+      this.switchButton = nativeSwitchButton;
       this.injected = false;
       if (!this.switchButton) {
         console.warn(`[ARH] Cannot find ${page}_res_switch_btn - JS control not injected yet.`);
@@ -129,17 +150,20 @@
         return;
       }
 
-      parent.removeChild(this.switchButton);
+      this.switchButton = nativeSwitchButton.cloneNode(true);
+      parent.removeChild(nativeSwitchButton);
       wrapper.appendChild(this.switchButton);
       parent.appendChild(wrapper);
 
       sel.onchange = () => controller.setAspectRatio(this.getCurrentOption());
-      this.switchButton.onclick = () => {
-        reverseAllOptions();
+      this.switchButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        reverseOptions(sel);
         const picked = this.getCurrentOption();
-        if (_LOCK === picked) controller.setAspectRatio(`${controller.heightRatio}:${controller.widthRatio}`);
-        else controller.setAspectRatio(picked);
-      };
+        controller.swapDimensions(picked);
+      });
 
       this.injected = true;
       console.log(`[ARH] Injected JS picker for ${page}`);
@@ -220,7 +244,7 @@
       }
     }
 
-    setAspectRatio(aspectRatio) {
+    setAspectRatio(aspectRatio, maintain = true) {
       this.aspectRatio = aspectRatio;
       if (aspectRatio === _OFF) return this.disable();
 
@@ -243,7 +267,31 @@
       this.widthRatio = wR;
       this.heightRatio = hR;
       this.updateInputStates();
-      this.maintainAspectRatio();
+      if (maintain) this.maintainAspectRatio();
+    }
+
+    applyDimensions(width, height) {
+      const ev = new Event("input", { bubbles: true });
+
+      this.widthContainer.setVal(width);
+      this.widthContainer.triggerEvent(ev);
+      this.heightContainer.setVal(height);
+      this.heightContainer.triggerEvent(ev);
+
+      if (typeof dimensionChange === "function") {
+        this.heightContainer.inputs.forEach((input) => dimensionChange({ target: input }, false, true));
+        this.widthContainer.inputs.forEach((input) => dimensionChange({ target: input }, true, false));
+      }
+    }
+
+    swapDimensions(aspectRatio) {
+      const oldWidth = this.widthContainer.getVal();
+      const oldHeight = this.heightContainer.getVal();
+      const effectiveAspectRatio = aspectRatio === _LOCK ? `${oldHeight}:${oldWidth}` : aspectRatio;
+
+      this.setAspectRatio(effectiveAspectRatio, false);
+      const [width, height] = clampToBoundaries(oldHeight, oldWidth);
+      this.applyDimensions(width, height);
     }
 
     maintainAspectRatio(changedElement) {
@@ -266,17 +314,7 @@
       }
 
       const [width, height] = clampToBoundaries(w, h);
-      const ev = new Event("input", { bubbles: true });
-
-      this.widthContainer.setVal(width);
-      this.widthContainer.triggerEvent(ev);
-      this.heightContainer.setVal(height);
-      this.heightContainer.triggerEvent(ev);
-
-      if (typeof dimensionChange === "function") {
-        this.heightContainer.inputs.forEach((input) => dimensionChange({ target: input }, false, true));
-        this.widthContainer.inputs.forEach((input) => dimensionChange({ target: input }, true, false));
-      }
+      this.applyDimensions(width, height);
     }
   }
 
@@ -325,13 +363,15 @@
   const run = () => {
     console.log("[ARH] init start");
 
-    const txt2imgOptions = [_OFF, _LOCK, ...DEFAULT_RATIOS];
-    const img2imgOptions = [_OFF, _LOCK, _IMAGE, ...DEFAULT_RATIOS];
+    const configuredRatios = getConfiguredRatios();
+    const txt2imgOptions = [_OFF, _LOCK, ...configuredRatios];
+    const img2imgOptions = [_OFF, _LOCK, _IMAGE, ...configuredRatios];
 
     initWithRetry("__txt2imgAspectRatioController", "txt2img", txt2imgOptions);
     initWithRetry("__img2imgAspectRatioController", "img2img", img2imgOptions);
   };
 
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", run);
+  if (typeof onOptionsAvailable === "function") onOptionsAvailable(run);
+  else if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", run);
   else run();
 })();
