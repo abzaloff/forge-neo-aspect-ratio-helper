@@ -7,7 +7,7 @@
 
   const DEFAULT_RATIOS = ["1:1", "3:2", "4:3", "5:4", "16:9", "21:9"];
 
-  const _MAXIMUM_DIMENSION = 2048;
+  const _MAXIMUM_DIMENSION = 8000;
   const _MINIMUM_DIMENSION = 64;
 
   const _IMAGE_INPUT_CONTAINER_IDS = [
@@ -211,6 +211,10 @@
 
       this.optionPickingControler = new OptionPickingController(page, options, this);
       this.setAspectRatio(_OFF);
+
+      if (page === "img2img") {
+        this.setupImageObservers();
+      }
     }
 
     disable() {
@@ -315,6 +319,31 @@
 
       const [width, height] = clampToBoundaries(w, h);
       this.applyDimensions(width, height);
+    }
+
+    setupImageObservers() {
+      _IMAGE_INPUT_CONTAINER_IDS.forEach((id) => {
+        const container = gradioApp().getElementById(id);
+        if (!container) return;
+
+        const observer = new MutationObserver((mutations) => {
+          // If the current selected option is the image aspect ratio, update dimensions
+          if (this.aspectRatio === _IMAGE) {
+            // Add a minor timeout to ensure Gradio has finished rendering the naturalWidth/Height
+            setTimeout(() => {
+              this.setAspectRatio(_IMAGE);
+            }, 100);
+          }
+        });
+
+        // Observe when elements/images are added, removed, or source attributes change
+        observer.observe(container, {
+          childList: true,
+          subtree: true,
+          attributes: true,
+          attributeFilter: ["src"]
+        });
+      });
     }
   }
 
