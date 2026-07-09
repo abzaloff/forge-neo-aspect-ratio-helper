@@ -1,7 +1,7 @@
 from __future__ import annotations
 EXTENSION_NAME = 'Aspect Ratio Helper'
 
-MAX_DIMENSION = 2048
+MAX_DIMENSION = 8000
 MIN_DIMENSION = 64
 
 ARH_EXPAND_BY_DEFAULT_KEY = 'arh_expand_by_default'
